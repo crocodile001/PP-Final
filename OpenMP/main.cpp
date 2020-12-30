@@ -97,11 +97,13 @@ int main()
 
     camera cam(lookfrom, lookat, vec3(0, 1, 0), 20, double(nx)/double(ny), aperture, dist_to_focus, 0.0, 1.0);
     
-    #pragma omp parallel for collapse(2)
+    //#pragma omp parallel for collapse(2)
     for(int j = ny-1; j >= 0; j -= 1)
         for(int i = 0; i < nx; i += 1)
         {
             vec3 col(0, 0, 0);
+            #pragma omp declare reduction(+ : vec3 : omp_out = omp_out + omp_in) initializer (omp_priv {0, 0, 0})
+            #pragma omp parallel for reduction(+ : col)
             for(int k = 0; k < ns; k += 1)
             {
                 double u = double(i + (double)rand()/(RAND_MAX + 1.0)) / double(nx);
