@@ -14,7 +14,7 @@ using namespace std;
 vec3 color(const ray& r, hitable *world, int depth)
 {
     hit_record rec;
-    if(world->hit(r, 0.001, INT_MAX, rec))
+    if(world->hit(r, 0.001, 50, rec))
     {
         ray scattered;
         vec3 attenuation;   //衰減
@@ -80,9 +80,9 @@ int main()
 {
     srand(time(NULL));
 
-    int nx = 120;
-    int ny = 80;
-    int ns = 1;
+    int nx = 240;
+    int ny = 160;
+    int ns = 10;
     hitable *world = random_scene();
     fstream file;
     file.open("Hello.ppm", ios::out);
