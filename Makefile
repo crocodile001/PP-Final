@@ -1,8 +1,10 @@
-default: serial openmp
+default: serial openmp mpi
 
 serial: serial.cpp
-	g++ $< -o $@
+	g++ $< -o $@ -O3
 openmp: openmp.cpp
-	g++ $< -fopenmp -o $@
+	g++ $< -fopenmp -o $@ -O3
+mpi: mpi.cpp
+	mpic++ $< -o $@ -O3
 clean:
-	rm -f *.ppm serial openmp
+	rm -f *.ppm serial openmp mpi
