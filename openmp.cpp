@@ -3,11 +3,11 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <time.h>
-#include "sphere.h"
-#include "hitable_list.h"
-#include "camera.h"
-#include "material.h"
-#include "moving_sphere.h"
+#include "./library/sphere.h"
+#include "./library/hitable_list.h"
+#include "./library/camera.h"
+#include "./library/material.h"
+#include "./library/moving_sphere.h"
 
 using namespace std;
 
@@ -80,9 +80,9 @@ int main()
 {
     srand(time(NULL));
 
-    int nx = 120;
-    int ny = 80;
-    int ns = 1;
+    int nx = 240;
+    int ny = 160;
+    int ns = 10;
     hitable *world = random_scene();
     fstream file;
     file.open("Hello.ppm", ios::out);
@@ -92,13 +92,18 @@ int main()
     vec3 lookat(0, 0, 0);
     double dist_to_focus = 10.0;
     double aperture = 0.0;  //光圈
+    double img[nx][ny][3];
+    
 
     camera cam(lookfrom, lookat, vec3(0, 1, 0), 20, double(nx)/double(ny), aperture, dist_to_focus, 0.0, 1.0);
     
+    //#pragma omp parallel for collapse(2)
     for(int j = ny-1; j >= 0; j -= 1)
         for(int i = 0; i < nx; i += 1)
         {
             vec3 col(0, 0, 0);
+            #pragma omp declare reduction(+ : vec3 : omp_out = omp_out + omp_in) initializer (omp_priv {0, 0, 0})
+            #pragma omp parallel for reduction(+ : col)
             for(int k = 0; k < ns; k += 1)
             {
                 double u = double(i + (double)rand()/(RAND_MAX + 1.0)) / double(nx);
@@ -112,6 +117,13 @@ int main()
             int ir = int(255.99 * col[0]);
             int ig = int(255.99 * col[1]);
             int ib = int(255.99 * col[2]);
-            file << ir << " " << ig << " " << ib <<"\n";
+            //file << ir << " " << ig << " " << ib <<"\n";
+            img[i][j][0] = ir;
+            img[i][j][1] = ig;
+            img[i][j][2] = ib;
         }
+
+    for(int j = ny-1; j >= 0; j -= 1)
+        for(int i = 0; i < nx; i += 1)
+            file  << img[i][j][0] << " " << img[i][j][1] << " " << img[i][j][2] <<"\n";
 }
