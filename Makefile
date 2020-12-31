@@ -5,7 +5,7 @@ serial: serial.cpp
 openmp: openmp.cpp
 	g++ $< -fopenmp -o $@ -O3
 mpi: mpi.cpp
-	mpic++ $< -o $@ -O3
+	mpicxx $< -o $@ -O3
 opencl: opencl.cpp
 	g++ $< -O3 -lOpenCL -m64 -w -o opencl
 clean:
