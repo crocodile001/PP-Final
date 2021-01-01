@@ -7,23 +7,23 @@ class sphere: public hitable
 {
 public:
     __device__ sphere() {}
-    __device__ sphere(vec3 cen, float r, material *m) : center(cen), radius(r), mat_ptr(m) {};
-    __device__ virtual bool hit(const ray& r, float t_min, float t_max, hit_record& rec) const;
+    __device__ sphere(vec3 cen, double r, material *m) : center(cen), radius(r), mat_ptr(m) {};
+    __device__ virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const;
     vec3 center;
-    float radius;
+    double radius;
     material *mat_ptr;
 };
 
-__device__ bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec) const
+__device__ bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const
 {
     vec3 oc = r.origin() - center;
-    float a = dot(r.direction(), r.direction());
-    float b = dot(oc, r.direction());
-    float c = dot(oc, oc) - radius*radius;
-    float discriminant = b*b - a*c;
+    double a = dot(r.direction(), r.direction());
+    double b = dot(oc, r.direction());
+    double c = dot(oc, oc) - radius*radius;
+    double discriminant = b*b - a*c;
     if(discriminant > 0)
     {
-        float temp = (-b -sqrt(discriminant)) / a;
+        double temp = (-b -sqrt(discriminant)) / a;
         if(temp < t_max && temp > t_min)
         {
             rec.t = temp;
