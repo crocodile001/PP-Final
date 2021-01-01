@@ -8,7 +8,7 @@
 #include "./library/camera.h"
 #include "./library/material.h"
 #include "./library/moving_sphere.h"
-#include <omp.h>
+#include <mpi.h>
 
 using namespace std;
 
@@ -77,34 +77,48 @@ hitable *random_scene() {
     return new hitable_list(list,i);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+    int rank, size, dx, averow, extra, start, end;
+    MPI_Status status;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    //printf("rank = %d, size = %d\n", rank, size);
+
     srand(time(NULL));
 
-    int nx = 240;
-    int ny = 160;
+    int nx = 480;
+    int ny = 320;
     int ns = 100;
     hitable *world = random_scene();
-    fstream file;
-    file.open("Hello.ppm", ios::out);
-    file << "P3\n" << nx << " " << ny << "\n255\n";
 
     vec3 lookfrom(13, 2, 3);
     vec3 lookat(0, 0, 0);
     double dist_to_focus = 10.0;
     double aperture = 0.0;  //光圈
-    double img[nx][ny][3];
+    int img[nx][ny][3];
     
 
     camera cam(lookfrom, lookat, vec3(0, 1, 0), 20, double(nx)/double(ny), aperture, dist_to_focus, 0.0, 1.0);
     
-    #pragma omp parallel for collapse(2)
-    for(int j = ny-1; j >= 0; j -= 1)
-        for(int i = 0; i < nx; i += 1)
+    averow = nx / size;
+    extra = nx % size;
+    if(rank == size - 1)
+        dx = averow + extra;
+        //dx = (rank <= extra)? averow + 1 : averow;
+    else
+        dx = averow;
+    
+    start = rank * averow;
+    end = start + dx;
+    //printf("%d %d\n", rank, dx);
+    //printf("%d %d %d\n", rank, start, end);
+
+    for(int j = 0; j < ny; j += 1)
+        for(int i = start; i < end; i += 1)
         {
             vec3 col(0, 0, 0);
-            //#pragma omp declare reduction(+ : vec3 : omp_out = omp_out + omp_in) initializer (omp_priv {0, 0, 0})
-            //#pragma omp parallel for reduction(+ : col)
             for(int k = 0; k < ns; k += 1)
             {
                 double u = double(i + (double)rand()/(RAND_MAX + 1.0)) / double(nx);
@@ -124,7 +138,22 @@ int main()
             img[i][j][2] = ib;
         }
 
-    for(int j = ny-1; j >= 0; j -= 1)
-        for(int i = 0; i < nx; i += 1)
-            file  << img[i][j][0] << " " << img[i][j][1] << " " << img[i][j][2] <<"\n";
+    MPI_Gather(&img[start][0][0], dx * ny * 3, MPI_INT, img, dx * ny * 3, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if(rank == 0){
+
+        fstream file;
+        file.open("Hello.ppm", ios::out);
+        file << "P3\n" << nx << " " << ny << "\n255\n";
+
+        for(int j = ny-1; j >= 0; j -= 1)
+            for(int i = 0; i < nx; i += 1)
+                file  << img[i][j][0] << " " << img[i][j][1] << " " << img[i][j][2] << "\n";
+
+        file.close();
+
+    }
+
+    MPI_Finalize();
+    return 0;
 }
