@@ -115,6 +115,26 @@ int main(int argc, char **argv)
     //printf("%d %d\n", rank, dx);
     //printf("%d %d %d\n", rank, start, end);
 
+    MPI_Request *requests;
+    MPI_Status *status2;
+    if(rank == 0){
+
+        requests = (MPI_Request*)malloc(sizeof(MPI_Request) * (size-1));
+        status2 = (MPI_Status*)malloc(sizeof(MPI_Status) * (size-1));
+
+        int rows;
+        int offset = averow;
+        for (int source = 1; source < size; source++){
+
+            //rows = (source <= extra)? averow + 1 : averow;
+            rows = (source == size - 1)? averow + extra : averow;
+            MPI_Irecv(&img[offset][0][0], rows * ny * 3, MPI_INT, source, 1, MPI_COMM_WORLD, &requests[source-1]);
+            offset = offset + rows;
+
+        }
+
+    }
+
     for(int j = 0; j < ny; j += 1)
         for(int i = start; i < end; i += 1)
         {
@@ -139,22 +159,6 @@ int main(int argc, char **argv)
         }
 
     if(rank == 0){
-
-        MPI_Request *requests;
-        requests = (MPI_Request*)malloc(sizeof(MPI_Request) * (size-1));
-        MPI_Status *status2;
-        status2 = (MPI_Status*)malloc(sizeof(MPI_Status) * (size-1));
-
-        int rows;
-        int offset = averow;
-        for (int source = 1; source < size; source++){
-
-            //rows = (source <= extra)? averow + 1 : averow;
-            rows = (source == size - 1)? averow + extra : averow;
-            MPI_Irecv(&img[offset][0][0], rows * ny * 3, MPI_INT, source, 1, MPI_COMM_WORLD, &requests[source-1]);
-            offset = offset + rows;
-
-        }
 
         fstream file;
         file.open("Hello.ppm", ios::out);
