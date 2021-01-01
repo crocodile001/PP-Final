@@ -13,7 +13,8 @@
 #include "./lib_cuda/cuda_def.h"
 #define BLOCK_WIDTH 4
 #define BLOCK_HEIGHT 4
-#define DEPTH 50
+#define DEPTH 30
+#define MIRROR 50
 
 using namespace std;
 
@@ -22,9 +23,10 @@ __device__ vec3 color(curandState *devStates, int id, const ray& r, int depth)
     hit_record rec;
 	vec3 attenuation;   //衰減
 	ray scattered;
-	if(world->hit(r, 0.001, M, rec))
+	
+	if(world->hit(r, 0.001, MIRROR, rec))
     {
-        if(depth < 50 && rec.mat_ptr->scatter(devStates, id, r, rec, attenuation, scattered))
+        if(depth < DEPTH && rec.mat_ptr->scatter(devStates, id, r, rec, attenuation, scattered))
         {
             return attenuation*color(devStates, id, scattered, depth+1);
         }
@@ -36,16 +38,19 @@ __device__ vec3 color(curandState *devStates, int id, const ray& r, int depth)
     else
     {
         vec3 unit_direction = unit_vector(r.direction());
-        double t = 0.5*(unit_direction.y() + 1.0);
+        float t = 0.5*(unit_direction.y() + 1.0);
         return (1.0 - t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
     }
+	
 	/*
 	int i;
+	vec3 att(1.0, 1.0, 1.0);
 	bool h = world->hit(r, 0.001, M, rec);
 	bool s = true;
 	for(i=0; i<DEPTH && (s && h); ++i)
 	{
 		s = rec.mat_ptr->scatter(devStates, id, r, rec, attenuation, scattered);
+		att *= attenuation;
 		h = world->hit(r, 0.001, M, rec);
 	}
 	if(h)
@@ -53,8 +58,9 @@ __device__ vec3 color(curandState *devStates, int id, const ray& r, int depth)
 	else
     {
         vec3 unit_direction = unit_vector(r.direction());
-        double t = 0.5*(unit_direction.y() + 1.0);
-        return (1.0 - t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+        float t = 0.5*(unit_direction.y() + 1.0);
+		vec3 ret = (1.0 - t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0);
+        return att*ret;
     }
 	*/
 }
@@ -104,12 +110,12 @@ __global__ void random_scene_kernel()
     world = new hitable_list(list,i);
 }
 
-__global__ void cam_kernel(double vfov, double aspect, double aperture, double focus_dist, double t0, double t1)
+__global__ void cam_kernel(camera *cam, float vfov, float aspect, float aperture, float focus_dist, float t0, float t1)
 {
 	vec3 lookfrom(13, 2, 3);
     vec3 lookat(0, 0, 0);
 	vec3 vup(0, 1, 0);
-	cam = camera(lookfrom, lookat, vup, 20, vfov, aspect, focus_dist, t0, t1);
+	*cam = camera(lookfrom, lookat, vup, 20, vfov, aspect, focus_dist, t0, t1);
 }
 
 __global__ void rand_kernel(curandState *devStates, int nx, int ny)
@@ -120,60 +126,54 @@ __global__ void rand_kernel(curandState *devStates, int nx, int ny)
 	int id = y * nx + x;
     // __device__ void curand_init(unsigned long long seed, unsigned long long sequence, unsigned long long offset, curandState_t *state)
 	if(x < nx && y < ny)
-		curand_init(0, id, 0, &devStates[id]);
+		curand_init(0, id, x, &devStates[id]);
 }
 
-__global__ void pixel_kernel(curandState *devStates, int *img, int nx, int ny, int ns)
+__global__ void pixel_kernel(camera *cam, curandState *devStates, int *img, int nx, int ny, int ns)
 {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	int id = y * nx + x;
 	vec3 col(0, 0, 0);
-	double u, v;
+	float u, v;
 	int k;
 	if(x < nx && y < ny)
 	{
 		for(k = 0; k < ns; ++k)
 		{		
 			// __device__ unsigned int curand(curandState_t *state)
-			// __device__ double curand_uniform_double(curandState_t *state)
-			u = (double)(x + curand_uniform_double(&devStates[id]) - DELTA) / (double)nx;
-			v = (double)(y + curand_uniform_double(&devStates[id]) - DELTA) / (double)ny;
-			ray r = cam.get_ray(devStates, id, u, v);
+			// __device__ float curand_uniform_double(curandState_t *state)
+			u = (float)(x + curand_uniform_double(&devStates[id]) - DELTA) / (float)nx;
+			v = (float)(y + curand_uniform_double(&devStates[id]) - DELTA) / (float)ny;
+			ray r = cam->get_ray(devStates, id, u, v);
 			col += color(devStates, id, r, 0);
 		}
-		col /= (double)ns;
-		/*
-		if(col[0] >= 1.0)
-			col[0] = 0.99;
-		if(col[1] >= 1.0)
-			col[1] = 0.99;
-		if(col[2] >= 1.0)
-			col[2] = 0.99;
-		*/
+		col /= (float)ns;
 		col = vec3(sqrt(col[0]), sqrt(col[1]), sqrt(col[2]));
-		img[id*3] = 255;//(int)(255.99 * col[0]);
-		img[id*3 + 1] = 255;//(int)(255.99 * col[1]);
-		img[id*3 + 2] = 255;//(int)(255.99 * col[2]);
+		img[id*3] = (int)(255.99 * col[0]);
+		img[id*3 + 1] = (int)(255.99 * col[1]);
+		img[id*3 + 2] = (int)(255.99 * col[2]);
 	}
 }
 
 int main()
 {
-    int nx = 240;
-    int ny = 160;
-    int ns = 1;
-    double dist_to_focus = 10.0;
-    double aperture = 0.0;  //光圈
+    int nx = 120;
+    int ny = 80;
+    int ns = 10;
+    float dist_to_focus = 10.0;
+    float aperture = 0.0;  //光圈
 	fstream file;
     file.open("Hello.ppm", ios::out);
     file << "P3\n" << nx << " " << ny << "\n255\n";
 	///////////////////////////////////////////////////////////
 	random_scene_kernel<<<1, 1>>>();
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	///////////////////////////////////////////////////////////
-    cam_kernel<<<1, 1>>>(20, double(nx)/double(ny), aperture, dist_to_focus, 0.0, 1.0);
-    cudaDeviceSynchronize();
+	camera *cam;
+	cudaMalloc((void**)&cam, sizeof(camera));
+    cam_kernel<<<1, 1>>>(cam, 20, float(nx)/float(ny), aperture, dist_to_focus, 0.0, 1.0);
+    //cudaDeviceSynchronize();
 	///////////////////////////////////////////////////////////	
 	curandState *devStates;
 	cudaMalloc((void **)&devStates, nx*ny*sizeof(curandState));
@@ -184,13 +184,13 @@ int main()
     dim3 dimBlock(BLOCK_WIDTH, BLOCK_HEIGHT);
 	//printf("%d %d %d %d\n", dimGrid.x, dimGrid.y, dimBlock.x, dimBlock.y);
 	rand_kernel<<<dimGrid, dimBlock>>>(devStates, nx, ny);
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 	///////////////////////////////////////////////////////////
 	int *img, *devImg;
 	img = (int*)malloc(3*nx*ny*sizeof(int));
 	cudaMalloc((void **)&devImg, 3*nx*ny*sizeof(int));
 	cudaMemset(devImg, 0, 3*nx*ny*sizeof(int));
-	pixel_kernel<<<dimGrid, dimBlock>>>(devStates, devImg, nx, ny, ns);
+	pixel_kernel<<<dimGrid, dimBlock>>>(cam, devStates, devImg, nx, ny, ns);
 	cudaDeviceSynchronize();
 	cudaMemcpy(img, devImg, 3*nx*ny*sizeof(int), cudaMemcpyDeviceToHost);	
 	for(int i=0; i<3*nx*ny; i+=3)

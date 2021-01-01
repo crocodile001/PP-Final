@@ -16,9 +16,9 @@ __device__ vec3 random_in_unit_sphere(curandState *devStates, const int id)
     return p;
 }
 
-__device__ double schlick(double cosine, double ref_idx)
+__device__ float schlick(float cosine, float ref_idx)
 {
-    double r0 = (1-ref_idx) / (1+ref_idx);
+    float r0 = (1-ref_idx) / (1+ref_idx);
     r0 = r0*r0;
     return r0 + (1-r0)*pow((1 - cosine),5);
 }
@@ -28,11 +28,11 @@ __device__ vec3 reflect(const vec3& v, const vec3& n)
     return v - 2*dot(v, n)*n;
 }
 
-__device__ bool refract(const vec3& v, const vec3& n, double ni_over_nt, vec3& refracted)
+__device__ bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted)
 {
     vec3 uv = unit_vector(v);
-    double dt = dot(uv, n);
-    double discriminant = 1.0 - ni_over_nt*ni_over_nt*(1-dt*dt);
+    float dt = dot(uv, n);
+    float discriminant = 1.0 - ni_over_nt*ni_over_nt*(1-dt*dt);
     if(discriminant > 0)
     {
         refracted = ni_over_nt*(uv - n*dt) - n*sqrt(discriminant);
@@ -51,29 +51,29 @@ public:
 class dielectric : public material
 {
 public:
-    __device__ dielectric(double ri) : ref_idx(ri) {}
+    __device__ dielectric(float ri) : ref_idx(ri) {}
     __device__ virtual bool scatter(curandState *devStates, const int id, const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const
     {
         vec3 outward_normal;
         vec3 reflected = reflect(r_in.direction(), rec.normal);
-        double ni_over_nt;
+        float ni_over_nt;
         attenuation = vec3(1.0, 1.0, 1.0);
 		scattered = ray(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0);
         vec3 refracted;
-        double reflect_prob;
-        double cosine;
+        float reflect_prob;
+        float cosine;
 		return true;
         if(dot(r_in.direction(), rec.normal) > 0)
         {
-            outward_normal = -1*rec.normal;
+            outward_normal = -1.0 * rec.normal;
             ni_over_nt = ref_idx;
             cosine = ref_idx * dot(r_in.direction(), rec.normal) / r_in.direction().length();
         }
         else
         {
             outward_normal = rec.normal;
-            ni_over_nt = 1.0/ref_idx;
-            cosine = -1 * dot(r_in.direction(), rec.normal) / r_in.direction().length();
+            ni_over_nt = 1.0 / ref_idx;
+            cosine = -1.0 * dot(r_in.direction(), rec.normal) / r_in.direction().length();
         }
         
         if(refract(r_in.direction(), outward_normal, ni_over_nt, refracted))
@@ -95,7 +95,7 @@ public:
         }
         return true;
     }
-    double ref_idx;
+    float ref_idx;
 };
 
 class lambertian : public material
@@ -108,9 +108,11 @@ public:
 		scattered = ray(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0);
         vec3 light(0, 2, 0);
         vec3 target = rec.p + rec.normal + random_in_unit_sphere(devStates, id);
-		light -= rec.p;
-		double len = light.squared_length();
-		light /= len;		
+		// very weird floating point problem
+		vec3 tmp(-1.0f*rec.p.x(), -1.0f*rec.p.y(), -1.0f*rec.p.y());
+		light += tmp;
+		light /= light.squared_length();
+		////////////////////////////////		
         scattered = ray(rec.p, rec.normal + light + random_in_unit_sphere(devStates, id), r_in.time());
 		attenuation = albedo;
         return true;
@@ -122,26 +124,24 @@ public:
 class metal : public material
 {
 public:
-    __device__ metal(const vec3& a, double f) : albedo(a) {if(f < 1) fuzz = f; else fuzz = 1;}
+    __device__ metal(const vec3& a, float f) : albedo(a) {if(f < 1) fuzz = f; else fuzz = 1;}
     __device__ virtual bool scatter(curandState *devStates, const int id, const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered) const
     {
 		attenuation = vec3(1.0, 1.0, 1.0);
 		scattered = ray(vec3(1.0, 1.0, 1.0), vec3(1.0, 1.0, 1.0), 1.0);
-        vec3 light1(-7, 1, -25);
-        vec3 light2(0, 2, 0);
-        vec3 light3(7, 1, -25);		
-        vec3 light(0, 0, 0);
-        light = light2;
+        vec3 light(0, 2, 0);
         vec3 reflected = reflect(unit_vector(r_in.direction()), rec.normal);
-		light -= rec.p;
-		double len = light.squared_length();
-		light /= len;
+		// very weird floating point problem
+		vec3 tmp(-1.0f*rec.p.x(), -1.0f*rec.p.y(), -1.0f*rec.p.y());
+		light += tmp;
+		light /= light.squared_length();
+		////////////////////////////////
         scattered = ray(rec.p, reflected + light + fuzz*random_in_unit_sphere(devStates, id), r_in.time());
 		attenuation = albedo;
         return (dot(scattered.direction(), rec.normal) > 0);
     }
     vec3 albedo;
-    double fuzz;
+    float fuzz;
 };
 
 #endif
