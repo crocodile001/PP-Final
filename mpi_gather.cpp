@@ -77,6 +77,15 @@ hitable *random_scene() {
     return new hitable_list(list,i);
 }
 
+#define width 480
+#define height 320
+#define iter 100
+
+int nx = width;
+int ny = height;
+int ns = iter;
+unsigned char img[width][height][3];
+
 int main(int argc, char **argv)
 {
     int rank, size, dx, averow, extra, start, end;
@@ -88,16 +97,16 @@ int main(int argc, char **argv)
 
     srand(time(NULL));
 
-    int nx = 480;
-    int ny = 320;
-    int ns = 100;
+    //int nx = 480;
+    //int ny = 320;
+    //int ns = 100;
     hitable *world = random_scene();
 
     vec3 lookfrom(13, 2, 3);
     vec3 lookat(0, 0, 0);
     double dist_to_focus = 10.0;
     double aperture = 0.0;  //光圈
-    int img[nx][ny][3];
+    //int img[nx][ny][3];
     
 
     camera cam(lookfrom, lookat, vec3(0, 1, 0), 20, double(nx)/double(ny), aperture, dist_to_focus, 0.0, 1.0);
@@ -133,12 +142,12 @@ int main(int argc, char **argv)
             int ig = int(255.99 * col[1]);
             int ib = int(255.99 * col[2]);
             //file << ir << " " << ig << " " << ib <<"\n";
-            img[i][j][0] = ir;
-            img[i][j][1] = ig;
-            img[i][j][2] = ib;
+            img[i][j][0] = char(ir);
+            img[i][j][1] = char(ig);
+            img[i][j][2] = char(ib);
         }
 
-    MPI_Gather(&img[start][0][0], dx * ny * 3, MPI_INT, img, dx * ny * 3, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(&img[start][0][0], dx * ny * 3, MPI_UNSIGNED_CHAR, img, dx * ny * 3, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
     if(rank == 0){
 
@@ -148,7 +157,7 @@ int main(int argc, char **argv)
 
         for(int j = ny-1; j >= 0; j -= 1)
             for(int i = 0; i < nx; i += 1)
-                file  << img[i][j][0] << " " << img[i][j][1] << " " << img[i][j][2] << "\n";
+                file  << int(img[i][j][0]) << " " << int(img[i][j][1]) << " " << int(img[i][j][2]) << "\n";
 
         file.close();
 
