@@ -1,6 +1,12 @@
 # PP Final
 Monte Carlo Ray Tracer
 
+Pthread :
+
+```
+$ ./pthread <threadnum>
+```
+
 MPI :
 
 ```
