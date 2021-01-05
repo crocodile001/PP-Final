@@ -78,30 +78,6 @@ hitable *random_scene() {
     return new hitable_list(list,i);
 }
 
-/*void* Thread_hits(void* num){
-
-	long threadID = (long)num;
-	unsigned long long number_in_circle = 0;
-	double distance_squared, x, y;
-	unsigned int seed = time(NULL) + threadID;
-	unsigned long long tosses;
-
-	tosses = (threadID == (thread_count-1)) ? final_number_of_tosses : number_of_tosses;
-
-	for (unsigned long long toss = 0; toss < tosses; toss++){
-		x = (double) xorshift(&seed) / RAND_MAX;
-		y = (double) xorshift(&seed) / RAND_MAX;
-		distance_squared = (x * x + y * y);
-		if (distance_squared <= 1.0)
-		    number_in_circle++;
-	}
-
-	pthread_mutex_lock(&mutex);
-	hits += number_in_circle;
-	pthread_mutex_unlock(&mutex);
-
-	return NULL;
-}*/
 
 #define width 480
 #define height 320

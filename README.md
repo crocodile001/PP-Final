@@ -1,25 +1,53 @@
 # PP Final
 Monte Carlo Ray Tracer
 
-Pthread :
+**Compile :**
 
 ```
-$ ./pthread <threadnum>
+$ make
 ```
 
-MPI :
+**Serial :**
 
 ```
-$ mpic++ mpi.cpp -o mpi
-$ mpiexec -n 4 ./mpi
+$ ./serial
+```
+
+**Pthread :**
+
+```
+$ ./pthread <numOfthread>
+```
+
+**Openmp :**
+
+```
+$ ./openmp
+```
+
+**MPI :**
+
+```
+$ mpic++ mpi.cpp -o mpi_<method>
+$ mpiexec -n 4 ./mpi_<method>
 ```
 
 or
 
 ```
-$ mpicxx mpi.cpp -o mpi
-$ mpirun -np 8 --hostfile host/hosts ./mpi
+$ mpicxx mpi.cpp -o mpi_<method>
+$ mpirun -np 4 --hostfile host/hosts ./mpi_<method>
 ```
 
+if hosts file is not work, please rewrite it
 
-[Final Report](https://dylan007.github.io/RayTracer.pdf)
+**Cuda :**
+
+```
+$ ./cuda
+```
+
+**Opencl :**
+
+- working
+
