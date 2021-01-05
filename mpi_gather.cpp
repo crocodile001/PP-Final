@@ -124,8 +124,8 @@ int main(int argc, char **argv)
     //printf("%d %d\n", rank, dx);
     //printf("%d %d %d\n", rank, start, end);
 
-    for(int j = 0; j < ny; j += 1)
-        for(int i = start; i < end; i += 1)
+    for(int i = start; i < end; i += 1)
+        for(int j = 0; j < ny; j += 1)
         {
             vec3 col(0, 0, 0);
             for(int k = 0; k < ns; k += 1)

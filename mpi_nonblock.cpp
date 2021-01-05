@@ -144,8 +144,8 @@ int main(int argc, char **argv)
 
     }
 
-    for(int j = 0; j < ny; j += 1)
-        for(int i = start; i < end; i += 1)
+    for(int i = start; i < end; i += 1)
+        for(int j = 0; j < ny; j += 1)
         {
             vec3 col(0, 0, 0);
             for(int k = 0; k < ns; k += 1)

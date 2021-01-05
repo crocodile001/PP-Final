@@ -1,4 +1,4 @@
-default: serial openmp mpi_nonblock mpi_gather opencl cuda
+default: serial openmp mpi_nonblock mpi_gather cuda opencl
 
 serial: serial.cpp
 	g++ $< -o $@ -O3
